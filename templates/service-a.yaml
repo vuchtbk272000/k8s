@@ -1,0 +1,151 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-a
+data:
+  path-a.html: |
+    "/path-a.html" on service-a
+  path-b.html: |
+    "/path-b.html" on service-a
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>API Call Example</title>
+    </head>
+    <body>
+        <h1>API Data</h1>
+        <button id="fetchButton">Fetch Data</button>
+        <div id="result"></div>
+
+      <script>
+          document.getElementById('fetchButton').addEventListener('click', () => {
+              fetch('http://192.168.49.2:32262/index.php') // Replace with your API URL
+                  .then(response => {
+                      if (!response.ok) {
+                          throw new Error('Network response was not ok ' + response.statusText);
+                      }
+                      return response.text(); // Change to text() to get raw HTML
+                  })
+                  .then(data => {
+                      // Display the data in the result div
+                      document.getElementById('result').innerHTML = data; // Use innerHTML to render HTML
+                  })
+                  .catch(error => {
+                      console.error('There was a problem with the fetch operation:', error);
+                      document.getElementById('result').innerText = 'Error: ' + error.message;
+                  });
+          });
+      </script>
+    </body>
+    </html>  
+  404.html: |
+    service-a 404 page
+  # call-api.html: |
+    
+  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-a-nginx.conf
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  1;
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
+
+    events {
+        worker_connections  1024;
+    }
+
+    http {
+        sendfile        on;
+
+        server {
+            listen       80;
+            server_name  your-domain.com;  # Replace with your actual domain
+
+            location / {
+                root   /usr/share/nginx/html;
+                index  index.html index.htm;
+
+                # CORS headers
+                add_header 'Access-Control-Allow-Origin' '*';
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+                add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization';
+            }
+
+            location /api/ {
+                # CORS headers for API
+                add_header 'Access-Control-Allow-Origin' '*';
+                add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+                add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization';
+
+                # Handle preflight requests
+                if ($request_method = OPTIONS) {
+                    add_header 'Access-Control-Max-Age' 86400;
+                    return 204;  # No Content
+                }
+
+                # Proxy or serve your API requests here
+                # proxy_pass http://your_backend_service;  # Uncomment and set your backend
+            }
+
+            error_page 404 /404.html;
+            error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+                root /usr/share/nginx/html;
+            }
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-a
+  labels:
+    app: service-a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-a
+  template:
+    metadata:
+      labels:
+        app: service-a
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: html
+          mountPath: "/usr/share/nginx/html/"
+        - name: config
+          mountPath: "/etc/nginx/"
+      volumes:
+      - name: html
+        configMap:
+          name: service-a
+      - name: config
+        configMap:
+          name: service-a-nginx.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a
+spec:
+  selector:
+    app: service-a
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

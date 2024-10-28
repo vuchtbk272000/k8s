@@ -1,0 +1,5 @@
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'Kaopiz1!';
+FLUSH PRIVILEGES;
+CREATE USER 'php_user'@'%' IDENTIFIED BY 'Kaopiz1!';
+GRANT ALL PRIVILEGES ON *.* TO 'php_user'@'%';
+FLUSH PRIVILEGES;

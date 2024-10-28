@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "helloworld.fullname" . }}-nginx-node-port
+  labels:
+    {{- include "helloworld.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.nginx.nodePortService.type }}
+  ports:
+    - port: {{ .Values.nginx.nodePortService.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "helloworld.selectorLabels" . | nindent 4 }}
+
