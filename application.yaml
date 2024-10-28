@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/vuchtbk272000/k8s
     targetRevision: HEAD
-    path: guestbook
+    path: app
   destination:
     server: https://kubernetes.default.svc
     namespace: myapp
